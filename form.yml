@@ -1,0 +1,33 @@
+name: "teste"
+description: Criaçao xpto
+title: "teste"
+labels: "heimdall-teste"
+assignees:
+  - ${{github.author}}
+body:
+  - type: input
+    id: x
+    attributes:
+      label: "teste"
+      description: aaa
+      placeholder: aaa
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "<h2>Teste</h2>"
+  - type: textarea
+    id: a
+    description: teste
+    attributes:
+      label: text
+      description: "teste"
+      placeholder: teste
+  - type: dropdown
+    id: aaa
+    attributes:
+      label: dropdown
+      description: dropdown
+      options:
+        - label: 1
+          value: 2

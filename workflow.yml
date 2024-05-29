@@ -1,0 +1,80 @@
+name: teste
+on:
+  issues:
+    types: [open]
+
+jobs:
+  add-comment:
+    if: ${{ contains(github.event.issue.labels.*.name, 'heimdall') }}
+    name: add comment
+    runs-on: itau-linux
+    steps:
+      - name: teste
+        uses: peter-evans/create-or-ipdate-comment@v1
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            Esse é um teste de comentário
+          reactions: "+1"
+  form-to-json:
+    if: ${{ contains(github.event.issue.labels.*.name, 'heimdall') }}
+    name: convert to json
+    runs-on: itau-linux
+    needs: [add-comment]
+    outputs:
+      payload-parsed: ${{ steps.setting_var.outputs.json_var }}
+    steps:
+      - name: Fetch
+        id: read_issue_body
+        run: echo "body=$(gh issue view ${{ github.event.issue_number }} --repo ${{ github.repo }} --json body --jq '.body')" >> $GITHUB_OUTPUT
+
+      - name: Issue Forms Body Parser
+        id: parse
+        uses: zentered/issue-forms-body-parser@v2.0.0
+        with:
+          body: ${{ steps.read_issue_body.output.body }}
+      - name: Setting json_var variable value
+        id: setting_var
+        run: |
+          echo ::set-output name=json_var::$(cat <<"EOF"
+          $${{ steps.parse.outputs.data }}
+          EOF
+          )
+  create-alter-heimdall:
+    if: ${{ contains(github.event.issue.labels.*.name, 'heimdall') }}
+    name: Add new migration to main.tf
+    runs-on: itau-linux
+    needs:
+      - form-to-json
+    outputs:
+      branch-name: ${{ steps.python.outputs.branch }}
+      heimdall-operation: ${{ steps.python.outputs.heimdallop }}
+    steps:
+      - name: Checkout repo action
+        id: checkout
+        uses: actions/checkout@v2
+      - name: Git checkout develop
+        id: git-checkout-dev
+        run: |
+          git config user.name "Github Actions Bot"
+          git config user.email "<>"
+          git pull
+          git checkout develop
+      - name: Creating Heimdall Trigger
+        id: heimdall
+        run: |
+          export var1;
+          eval `python3 config/heimdall.py`;
+  add-error-comment:
+    name: Add error comment
+    runs-on: itau-linux
+    if: (contains(github.event.issue.labels.*.name, 'heimdall-create-alter') && !success())
+    needs: create-alter-heimdall
+    steps:
+      - name: Create comment
+        uses: peter-eveans/create-or-update-comment@v2
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            Erro
+          reactions: "+1"
